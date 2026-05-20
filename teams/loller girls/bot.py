@@ -160,14 +160,14 @@ def my_fitness(data):
     # often ignores half the legs and just drags on two — it's easier.
     #
     score  = data["distance"]    * 10.0
-    score += data["step_count"] * 5.0
+    score += data["step_count"] * 2.5
     score += data["legs_active"] *  5.0
-    score-=abs(data["angles"]*5.0)
-    score-=data["air_frames"]*5.0
-    score-=data["backward_frames"]*10.0  # I added this to discourage backward walking(Navya)
-    score+=data["fwd_speed"]*0.75 # Encouraging the walking speed(just used step vx in reverse if you look at my metrics)
+    score-=abs(data["angles"]*4.0)
+    score-=data["air_frames"]* 3.0
+    score-=data["backward_frames"]*10.0  # I added this to discourage backward walking
+    score+=data["fwd_speed"]* 0.45 # Encouraging the walking speed(just used step vx in reverse if you look at my metrics)
     score*=(data["smoothness"]) #smoothness ko priority dedi as it discourages hopping(acceleration changes basically are discouraged)
-    return score
+    return score/100 
 
     # ══════════════════════════════════════════════════════════════════════
     #  ALL AVAILABLE DATA POINTS
@@ -316,8 +316,8 @@ def my_metrics(step_data):
 #  problem is almost always the fitness function, not the generation count.
 #  Revisit Step 2 before running longer.
 
-MODE        = "train"    # start here — switch to "train" once test passes
-GENERATIONS = 20
+MODE        = "watch"    # start here — switch to "train" once test passes
+GENERATIONS = 50
 
 
 # ══════════════════════════════════════════════════════════════════════
