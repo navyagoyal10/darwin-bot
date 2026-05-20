@@ -164,10 +164,9 @@ def my_fitness(data):
     score += data["legs_active"] *  5.0
     score-=abs(data["angles"]*5.0)
     score+=data["air_frames"]*5.0
-    score-=data["backward_frames"]*10.0  #to discourage backward walking
-    score+=data["fwd_speed"]*0.5
-    score*=(data["smoothness"])
-       #discourages hopping(acceleration changes basically are discouraged)
+    score-=data["backward_frames"]*10.0  # I added this to discourage backward walking(Navya)
+    score+=data["fwd_speed"]*0.5 # Encouraging the walking speed(just used step vx in reverse if you look at my metrics)
+    score*=(data["smoothness"]) #smoothness ko priority dedi as it discourages hopping(acceleration changes basically are discouraged)
     return score
 
     # ══════════════════════════════════════════════════════════════════════
