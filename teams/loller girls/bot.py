@@ -79,7 +79,7 @@ import arena
 #    - Changing n_legs changes the neural network size — retrain from scratch.
 
 BODY = {
-    "n_legs":     2,      # biped — best starting point
+    "n_legs":     4,      # biped — best starting point
     "thigh_len":  0.45,   # upper leg: 45 cm
     "shin_len":   0.38,   # lower leg: 38 cm
     "hip_range":  0.85,   # hip swing: ~49 degrees each way
@@ -140,7 +140,7 @@ CURRENT_GEN = [0]   # automatically updated each generation — read-only
 
 def my_fitness(data):
 
-    # ── PART A: Hard penalty for falling ──────────────────────────────
+# ── PART A: Hard penalty for falling ──────────────────────────────
     #
     # Any creature that fell scores negative — always below an upright
     # walker. The tiny distance bonus (× 0.1) gives NEAT a weak gradient
@@ -160,8 +160,14 @@ def my_fitness(data):
     # often ignores half the legs and just drags on two — it's easier.
     #
     score  = data["distance"]    * 10.0
-    score += data["step_count"]  *  0.05
+    score += data["step_count"] * 5.0
     score += data["legs_active"] *  5.0
+    score-=abs(data["angles"]*5.0)
+    score+=data["air_frames"]*5.0
+    score-=data["backward_frames"]*10.0  #to discourage backward walking
+    score+=data["fwd_speed"]*0.5
+    score*=(data["smoothness"])
+       #discourages hopping(acceleration changes basically are discouraged)
     return score
 
     # ══════════════════════════════════════════════════════════════════════
@@ -265,14 +271,16 @@ def my_fitness(data):
 def my_metrics(step_data):
     return {
 
-        # Frames where the creature moves backward.
+         # Frames where the creature moves backward.
         # Penalise in fitness with:  score -= data["backward_frames"] * 0.02
         "backward_frames": 1 if step_data["vx"] < -2 else 0,
+        "fwd_speed": step_data["vx"] if step_data["vx"]>0 else 0,
 
         # Frames where no feet are on the ground at all.
         # High values = hopping or bouncing rather than walking.
         # Penalise with:  score -= data["air_frames"] * 0.01
         "air_frames": 1 if step_data["feet_down"] == 0 else 0,
+        "angles": 1 if step_data["torso_angle"]!=0 else 0,
 
     }
 
@@ -310,7 +318,7 @@ def my_metrics(step_data):
 #  Revisit Step 2 before running longer.
 
 MODE        = "train"    # start here — switch to "train" once test passes
-GENERATIONS = 100
+GENERATIONS = 50
 
 
 # ══════════════════════════════════════════════════════════════════════
