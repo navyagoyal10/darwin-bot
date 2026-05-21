@@ -80,7 +80,7 @@ import arena
 
 BODY = {
     "n_legs":     4,      # biped — best starting point
-    "thigh_len":  0.45,   # upper leg: 45 cm
+    "thigh_len":  0.55,   # upper leg: 45 cm
     "shin_len":   0.38,   # lower leg: 38 cm
     "hip_range":  0.85,   # hip swing: ~49 degrees each way
     "knee_range": 1.0,    # knee bend: ~57 degrees
@@ -159,14 +159,17 @@ def my_fitness(data):
     # legs_active × 5   rewards using all legs. Without this, evolution
     # often ignores half the legs and just drags on two — it's easier.
     #
-    score  = data["distance"]    * 10.0
-    score += data["step_count"] * 2.5
+    
+    score = data["step_count"] * 4.0
     score += data["legs_active"] *  5.0
-    score-=abs(data["angles"]*4.0)
+    score-=abs(data["angles"]*5.0)
     score-=data["air_frames"]* 3.0
     score-=data["backward_frames"]*10.0  # I added this to discourage backward walking
+    score-= data["upright"] * 2.0
     score+=data["fwd_speed"]* 0.45 # Encouraging the walking speed(just used step vx in reverse if you look at my metrics)
     score*=(data["smoothness"]) #smoothness ko priority dedi as it discourages hopping(acceleration changes basically are discouraged)
+    #I've basically separated quality of walk and distance
+    score += (data["distance"]**2)
     return score/100 
 
     # ══════════════════════════════════════════════════════════════════════
@@ -280,7 +283,7 @@ def my_metrics(step_data):
         # Penalise with:  score -= data["air_frames"] * 0.01
         "air_frames": 1 if step_data["feet_down"] == 0 else 0,
         "angles": 1 if step_data["torso_angle"]!=0 else 0,
-
+        "upright":   1 if step_data["torso_height"] < 40 else 0,
     }
 
 # Uncomment this line to disable custom metrics entirely:
@@ -317,7 +320,7 @@ def my_metrics(step_data):
 #  Revisit Step 2 before running longer.
 
 MODE        = "watch"    # start here — switch to "train" once test passes
-GENERATIONS = 50
+GENERATIONS =100
 
 
 # ══════════════════════════════════════════════════════════════════════
