@@ -141,54 +141,87 @@ CURRENT_GEN = [0]   # automatically updated each generation — read-only
 
 def my_fitness(data):
 
+    # -------------------------------------------------
+    # HARD FAILURE
+    # -------------------------------------------------
+
     if data["falls"] > 0:
-        return -50 + data["distance"] * 0.2
+        return -100 + data["distance"] * 0.1
 
     score = 0.0
 
-    # -------------------------------
+    distance = data["distance"]
+
+    # -------------------------------------------------
+    # PROGRESSIVE MOVEMENT FACTOR
+    # -------------------------------------------------
+    # Prevents early generations from being punished
+    # too hard before they learn movement.
+    # -------------------------------------------------
+
+    movement_factor = min(1.0, distance / 20.0)
+
+    # -------------------------------------------------
     # PRIMARY OBJECTIVE
-    # -------------------------------
+    # -------------------------------------------------
 
-    score += (data["distance"] ** 1.8) * 8.0
+    score += (distance ** 1.9) * 7.0
 
-    movement_factor = min(1.0, data["distance"] / 15.0)
+    # -------------------------------------------------
+    # REAL WALKING REWARD
+    # -------------------------------------------------
+    # THIS is the key section.
+    # Multi-leg behavior only matters AFTER movement exists.
+    # -------------------------------------------------
 
-    # -------------------------------
-    # ACTIVE MOVEMENT
-    # -------------------------------
+    score += data["legs_active"] * 25.0 * movement_factor
 
-    score += data["step_count"] * 0.04
+    score += data["contact_quality"] * 8.0 * movement_factor
 
-    # -------------------------------
-    # COORDINATION
-    # -------------------------------
+    score += data["step_count"] * 0.08 * movement_factor
 
-    score += data["legs_active"] * 8.0 * movement_factor
+    # -------------------------------------------------
+    # STABILITY
+    # -------------------------------------------------
 
-    score += data["contact_quality"] * 2.0 * movement_factor
+    score += data["smoothness"] * 5.0 * movement_factor
 
-    score += data["smoothness"] * 4.0 * movement_factor
+    # -------------------------------------------------
+    # BAD MOVEMENT PENALTIES
+    # -------------------------------------------------
 
-    # -------------------------------
-    # EFFICIENCY
-    # -------------------------------
+    score -= data["backward_frames"] * 1.5
 
-    score -= data["vertical_motion"] * 0.12
-    score -= data["air_frames"] * 0.07
+    score -= data["air_frames"] * 0.12
 
-    # -------------------------------
+    score -= data["vertical_motion"] * 0.18
+
+    # -------------------------------------------------
     # BODY CONTROL
-    # -------------------------------
+    # -------------------------------------------------
 
-    score -= data["angles"] * 0.03
-    score -= data["heights"] * 0.03
+    score -= data["angles"] * 0.025
 
-    # -------------------------------
-    # BAD MOTION
-    # -------------------------------
+    score -= data["heights"] * 0.02
 
-    score -= data["backward_frames"] * 1.2
+    # -------------------------------------------------
+    # ANTI-HOPPING BOOST
+    # -------------------------------------------------
+    # This is the secret sauce.
+    #
+    # If it moves FAR while using FEW legs,
+    # punish heavily.
+    # -------------------------------------------------
+
+    if distance > 15:
+
+        leg_efficiency = (
+            data["legs_active"] /
+            max(1.0, data["step_count"])
+        )
+
+        if leg_efficiency < 0.30:
+            score -= 600
 
     return score
 
@@ -426,8 +459,8 @@ def my_metrics(step_data):
 #     }
 
 # Execution state verification
-MODE        = "train"    
-GENERATIONS = 150
+MODE        = "watch"    
+GENERATIONS = 200
 # ══════════════════════════════════════════════════════════════════════
 #  NOTHING BELOW THIS LINE NEEDS TO CHANGE
 # ══════════════════════════════════════════════════════════════════════
