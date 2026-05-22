@@ -77,14 +77,21 @@ import arena
 #    - Start with these defaults. They are balanced for a 4-legged walker.
 #    - Once your creature walks, try changing one value at a time.
 #    - Changing n_legs changes the neural network size — retrain from scratch.
+# #navya
+# BODY = {
+#     "n_legs": 4,
+#     "thigh_len": 0.46,
+#     "shin_len": 0.36,
+#     "hip_range": 1.00,
+#     "knee_range": 0.95,
+# }
+#evox
 BODY = {
-    "n_legs": 4,
-
-    "thigh_len": 0.42,
-    "shin_len": 0.34,
-
-    "hip_range": 0.95,      #increased this for longer stride
-    "knee_range": 0.95,
+    "n_legs":     4,      # 4 legs give immediate balance gradient to optimize velocity 
+    "thigh_len":  0.60,   # Maximum allowed length to maximize stride distance 
+    "shin_len":   0.45,   # High ground clearance to prevent dragging/snagging 
+    "hip_range":  1.20,   # Maximized swing arc arc for explosive ground coverage 
+    "knee_range": 1.10,   # Generous knee flex for powerful push-offs
 }
 
 
@@ -138,93 +145,103 @@ BODY = {
 #    work with and progress stalls. Spread your scores out.
 
 CURRENT_GEN = [0]   # automatically updated each generation — read-only
-
+#evox
 def my_fitness(data):
-
-    # -------------------------------------------------
-    # HARD FAILURE
-    # -------------------------------------------------
-
+    # ── RULE 1: Total exclusion for falling ───────────────────────────
+    # A creature that falls must ALWAYS score significantly below upright ones[cite: 77].
+    # We maintain a minor distance slope so early messy gens can still learn[cite: 77].
     if data["falls"] > 0:
-        return -100 + data["distance"] * 0.1
+        return -100.0 * data["falls"] + data["distance"] * 0.1
 
-    score = 0.0
+    # ── RULE 2: High-Velocity Upright Locomotion ──────────────────────
+    # Scale distance reward aggressively (x25 instead of x10) to prioritize speed[cite: 46].
+    score = data["distance"] * 25.0
+    
+    # Reward frames spent actively moving forward[cite: 43].
+    score += data["step_count"] * 0.15
+    
+    # Highly reward gait consistency to avoid jerky, wasting energy profiles[cite: 42, 85].
+    score += data["smoothness"] * 15.0
+    
+    # Reward maintaining multiple legs structurally active[cite: 43].
+    score += data["legs_active"] * 10.0
 
-    distance = data["distance"]
-
-    # -------------------------------------------------
-    # PROGRESSIVE MOVEMENT FACTOR
-    # -------------------------------------------------
-    # Prevents early generations from being punished
-    # too hard before they learn movement.
-    # -------------------------------------------------
-
-    movement_factor = min(1.0, distance / 20.0)
-
-    # -------------------------------------------------
-    # PRIMARY OBJECTIVE
-    # -------------------------------------------------
-
-    score += (distance ** 1.9) * 7.0
-
-    # -------------------------------------------------
-    # REAL WALKING REWARD
-    # -------------------------------------------------
-    # THIS is the key section.
-    # Multi-leg behavior only matters AFTER movement exists.
-    # -------------------------------------------------
-
-    score += data["legs_active"] * 25.0 * movement_factor
-
-    score += data["contact_quality"] * 8.0 * movement_factor
-
-    score += data["step_count"] * 0.08 * movement_factor
-
-    # -------------------------------------------------
-    # STABILITY
-    # -------------------------------------------------
-
-    score += data["smoothness"] * 5.0 * movement_factor
-
-    # -------------------------------------------------
-    # BAD MOVEMENT PENALTIES
-    # -------------------------------------------------
-
-    score -= data["backward_frames"] * 1.5
-
-    score -= data["air_frames"] * 0.12
-
-    score -= data["vertical_motion"] * 0.18
-
-    # -------------------------------------------------
-    # BODY CONTROL
-    # -------------------------------------------------
-
-    score -= data["angles"] * 0.025
-
-    score -= data["heights"] * 0.02
-
-    # -------------------------------------------------
-    # ANTI-HOPPING BOOST
-    # -------------------------------------------------
-    # This is the secret sauce.
-    #
-    # If it moves FAR while using FEW legs,
-    # punish heavily.
-    # -------------------------------------------------
-
-    if distance > 15:
-
-        leg_efficiency = (
-            data["legs_active"] /
-            max(1.0, data["step_count"])
-        )
-
-        if leg_efficiency < 0.30:
-            score -= 600
+    # ── RULE 3: Custom Per-Frame Micro-Penalties ──────────────────────
+    # Pull custom metrics using safe dict fetches to prevent script crashes.
+    score -= data.get("backward_frames", 0) * 0.5
+    score -= data.get("air_frames", 0) * 0.25
+    
+    # Reward keeping the torso high and proud off the ground to optimize extension.
+    avg_height = data.get("accumulated_height", 0) / 600.0
+    score += avg_height * 0.1
 
     return score
 
+
+
+
+#navya
+# def my_fitness(data):
+
+#     # HARD FAILURE
+#     if data["falls"] > 0:
+#         return -200 + data["distance"] * 0.5
+
+#     distance = data["distance"]
+
+#     score = 0.0
+
+#     # ------------------------------------------------
+#     # PRIMARY OBJECTIVE
+#     # ------------------------------------------------
+
+#     # Strong distance scaling WITHOUT exploding
+#     score += (distance *10.0)
+#     # ------------------------------------------------
+#     # MOVEMENT ACTIVATION
+#     # ------------------------------------------------
+
+#     gait_factor = min(1.0, distance / 100.0)
+
+#     # ------------------------------------------------
+#     # TRUE WALKING REWARDS
+#     # ------------------------------------------------
+
+#     # Encourages using multiple legs
+#     score += data["legs_active"] * 0.5 * gait_factor
+
+#     # Foot contact stability
+#     score += data["contact_quality"] * 5.0 * gait_factor
+
+#     # Consistent stepping
+#     score += data["step_count"] * 0.5 * gait_factor
+
+#     # Smooth motion
+#     score += data["smoothness"]*5.0 * gait_factor
+
+#     #greater speed
+#     score+= data["fwd_speed"]*0.01*gait_factor
+
+#     # ------------------------------------------------
+#     # PENALTIES
+#     # ------------------------------------------------
+
+#     # Kills hopping
+#     score -= data["air_frames"] * 0.45
+
+#     # Kills bouncing
+#     score -= data["vertical_motion"] * 0.30
+
+#     # Kills instability
+#     score -= data["angles"] * 0.08
+
+#     # Kills body dragging
+#     score -= data["heights"] * 0.05
+
+#     # Prevent reverse jitter exploits
+#     score -= data["backward_frames"] * 1.2
+
+#     return score
     # ══════════════════════════════════════════════════════════════════════
     #  ALL AVAILABLE DATA POINTS
     # ══════════════════════════════════════════════════════════════════════
@@ -323,22 +340,37 @@ def my_fitness(data):
 #
 #  To disable, set:  my_metrics = None
 
+
+#evox
 def my_metrics(step_data):
     return {
+        # Track and punish frames where the creature slides back or recoils 
+        "backward_frames": 1 if step_data["vx"] < -1.0 else 0,
 
-         # Frames where the creature moves backward.
-        # Penalise in fitness with:  score -= data["backward_frames"] * 0.02
-        "backward_frames": 1 if step_data["vx"] < -2 else 0,
-        "fwd_speed": step_data["vx"] if step_data["vx"]>0 else 0,
-        "contact_quality":step_data["feet_down"] / max(1, BODY["n_legs"]),
-        # Frames where no feet are on the ground at all.
-        # High values = hopping or bouncing rather than walking.
-        # Penalise with:  score -= data["air_frames"] * 0.01
+        # Track "bouncing" or "launching". We want a true power-walk, not zero-traction hopping 
         "air_frames": 1 if step_data["feet_down"] == 0 else 0,
-        "angles": 1 if step_data["torso_angle"]<0.35 else 0,
-        "heights":   1 if step_data["torso_height"] < 45 else 0,
-        "vertical_motion":abs(step_data["vy"]) * 0.01,  #penalising hopping
+
+        # Track the raw torso height dynamically across all 600 frames
+        "accumulated_height": float(step_data["torso_height"]),
     }
+# #navya
+# def my_metrics(step_data):
+#     return {
+
+#          # Frames where the creature moves backward.
+#         # Penalise in fitness with:  score -= data["backward_frames"] * 0.02
+#         "backward_frames": 1 if step_data["vx"] < -2 else 0,
+#         "fwd_speed": step_data["vx"] if step_data["vx"]>0 else 0,
+#         "contact_quality":step_data["feet_down"] / max(1, BODY["n_legs"]),
+#         # Frames where no feet are on the ground at all.
+#         # High values = hopping or bouncing rather than walking.
+#         # Penalise with:  score -= data["air_frames"] * 0.01
+#         "air_frames": 1 if step_data["feet_down"] == 0 else 0,
+#         "angles": min(abs(step_data["torso_angle"]), 0.5),
+
+#         "vertical_motion": min(abs(step_data["vy"]) * 0.003, 2.0),
+#         "heights": max(0, 45 - step_data["torso_height"]),
+#     }
 
 # Uncomment this line to disable custom metrics entirely:
 # my_metrics = None
@@ -460,7 +492,7 @@ def my_metrics(step_data):
 
 # Execution state verification
 MODE        = "watch"    
-GENERATIONS = 200
+GENERATIONS = 300
 # ══════════════════════════════════════════════════════════════════════
 #  NOTHING BELOW THIS LINE NEEDS TO CHANGE
 # ══════════════════════════════════════════════════════════════════════
