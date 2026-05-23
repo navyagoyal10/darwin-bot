@@ -38,8 +38,8 @@ YOUR THREE JOBS
 """
 
 import sys, os, pickle, json
-here = os.path.dirname(os.path.abspath(__file__))
-_root = os.path.abspath(os.path.join(here, "..", ".."))
+_here = os.path.dirname(os.path.abspath(__file__))
+_root = os.path.abspath(os.path.join(_here, "..", ".."))
 if _root not in sys.path:
     sys.path.insert(0, _root)
 import arena
@@ -84,7 +84,7 @@ BODY = {
     "shin_len":   0.38,   # lower leg: 38 cm
     "hip_range":  0.85,   # hip swing: ~49 degrees each way
     "knee_range": 1.0,    # knee bend: ~57 degrees
-    }
+}
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -140,31 +140,31 @@ CURRENT_GEN = [0]   # automatically updated each generation — read-only
 
 def my_fitness(data):
 
-# ── PART A: Hard penalty for falling ──────────────────────────────
+    # ── PART A: Hard penalty for falling ──────────────────────────────
     #
     # Any creature that fell scores negative — always below an upright
     # walker. The tiny distance bonus (× 0.1) gives NEAT a weak gradient
     # in early generations when everything is falling anyway.
-    
+    #
     if data["falls"] > 0:
         return -10.0 * data["falls"] + data["distance"] * 0.1
 
     # ── PART B: Reward upright walking ────────────────────────────────
+    #
     # distance × 10   is the primary reward — walk further, score higher.
+    #
     # step_count × 0.05   rewards actively stepping rather than gliding.
     # A creature that tips forward and slides gets distance but no steps.
+    #
+    # legs_active × 5   rewards using all legs. Without this, evolution
     # often ignores half the legs and just drags on two — it's easier.
-
-    score  = data["distance"]   * 39.0
-    score += data["step_count"] * 5.0     #increasing step count reward  
-    score += data["legs_active"] *  7.0   #rewarding no. of active legs 
-    score-=abs(data["angles"]*4.5)     #adjusting the body angle to ensure it doesn't tilt to one side while walking
-    score-=data["air_frames"]*2.60     #penalising putting legs in the air (trying to make it walk on more legs )
-    score-=data["backward_frames"]*10.0  # I added this to discourage backward walking(Navya)
-    score+=data["fwd_speed"]*0.90 # Encouraging the walking speed(just used step vx in reverse if you look at my metrics)
-    score+=(data["smoothness"])*14.0 #smoothness ko priority dedi as it discourages hopping(acceleration changes basically are discouraged)
+    #
+    score  = data["distance"]    * 10.0
+    score += data["step_count"]  *  0.05
+    score += data["legs_active"] *  5.0
+    score-=abs(data["angles"]*0.5)
+    score+= data["smoothness"] * 5.0
     return score
-
 
     # ══════════════════════════════════════════════════════════════════════
     #  ALL AVAILABLE DATA POINTS
@@ -267,10 +267,9 @@ def my_fitness(data):
 def my_metrics(step_data):
     return {
 
-         # Frames where the creature moves backward.
+        # Frames where the creature moves backward.
         # Penalise in fitness with:  score -= data["backward_frames"] * 0.02
         "backward_frames": 1 if step_data["vx"] < -2 else 0,
-        "fwd_speed": step_data["vx"] if step_data["vx"]>0 else 0,
 
         # Frames where no feet are on the ground at all.
         # High values = hopping or bouncing rather than walking.
@@ -313,10 +312,8 @@ def my_metrics(step_data):
 #  problem is almost always the fitness function, not the generation count.
 #  Revisit Step 2 before running longer.
 
-MODE        = "watch"    # start here — switch to "train" once test passes
+MODE        = "train"    # start here — switch to "train" once test passes
 GENERATIONS = 100
-
-
 
 
 # ══════════════════════════════════════════════════════════════════════

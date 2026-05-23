@@ -1,3 +1,0 @@
-neat-python==2.0.0
-pymunk>=6.6.0
-pygame>=2.5.0
